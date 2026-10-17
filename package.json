@@ -1,0 +1,69 @@
+{
+  "name": "device-passport",
+  "version": "1.0.0",
+  "description": "Digital device passports for scrapers, bots and automation. 100% consistent, stateful browser personas with sticky hardware, correlated Client-Hints, and geo-aligned locales.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "assets"
+  ],
+  "scripts": {
+    "build": "unbuild",
+    "test": "bun test tests/",
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "bun run test && bun run build"
+  },
+  "keywords": [
+    "user-agent",
+    "client-hints",
+    "fingerprint",
+    "scraper",
+    "crawler",
+    "automation",
+    "playwright",
+    "puppeteer",
+    "anti-bot",
+    "stealth",
+    "browser-fingerprint",
+    "persona",
+    "device-fingerprint"
+  ],
+  "author": "webkubor",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/webkubor/device-passport.git"
+  },
+  "bugs": {
+    "url": "https://github.com/webkubor/device-passport/issues"
+  },
+  "homepage": "https://github.com/webkubor/device-passport#readme",
+  "dependencies": {
+    "header-generator": "^2.1.88"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript/typescript6": "^6.0.2",
+    "tsup": "^8.3.5",
+    "typescript": "^5.6.3",
+    "unbuild": "^3.6.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
+  }
+}
