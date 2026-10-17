@@ -1,6 +1,6 @@
 {
   "name": "device-passport",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Digital device passports for scrapers, bots and automation. 100% consistent, stateful browser personas with sticky hardware, correlated Client-Hints, and geo-aligned locales.",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -11,6 +11,31 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
+    },
+    "./geo": {
+      "types": "./dist/geo/index.d.ts",
+      "import": "./dist/geo/index.mjs",
+      "require": "./dist/geo/index.cjs"
+    },
+    "./storage": {
+      "types": "./dist/storage/index.d.ts",
+      "import": "./dist/storage/index.mjs",
+      "require": "./dist/storage/index.cjs"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.mjs",
+      "require": "./dist/adapters/index.cjs"
+    },
+    "./evaluator": {
+      "types": "./dist/evaluator/index.d.ts",
+      "import": "./dist/evaluator/index.mjs",
+      "require": "./dist/evaluator/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.cjs"
     }
   },
   "files": [
