@@ -376,6 +376,31 @@ npx device-passport inspect --seed production_user_102
 
 ---
 
+## API 与配置参数参考
+
+| 参数名 | 类型 | 默认值 | 详细说明 |
+|---|---|---|---|
+| `seed` | `string \| number` | `undefined` | 确定性人设种子（账号名、代理出口 IP、Worker 序号）。留空则生成一次性临时画像。 |
+| `geo` | `string` | `'US'` | ISO 3166-1 alpha-2 国家代码（`'US'`, `'JP'`, `'GB'` 等）或住宅代理连接串。自动咬合当地语言与时区。 |
+| `os` | `'windows' \| 'macos'` | `undefined` | 偏好的操作系统类型。 |
+| `browser` | `'chrome' \| 'edge' \| 'safari'` | `undefined` | 偏好的浏览器类型。 |
+| `store` | `string \| StorageAdapter` | `undefined` | 落盘文件路径（如 `'./data/passports.json'`）或自定义存储适配器，实现自动跨进程持久化。 |
+
+---
+
+## 常见问题与排障 (FAQ)
+
+#### Q1: `device-passport` 和传统的 `fake-useragent` 有何质的差异？
+传统的 `fake-useragent` 只是从静态列表里随机抽一条旧 UA 字符串；现代风控体系（Cloudflare、Akamai、DataDome、GitHub Anti-Abuse）重点审查 W3C Client-Hints（`Sec-CH-UA`, `Sec-CH-UA-Platform-Version`, `Sec-CH-UA-Arch`）、屏幕物理尺寸与 WebGL 渲染管线。`device-passport` 是完整的四元组设备人设，自洽性评分 $C(P) \equiv 1.0$，杜绝破绽。
+
+#### Q2: 服务器重启或定时任务重新调度，账号会漂移换设备吗？
+绝对不会。只要传入相同的 `seed` 并指定 `store` 存储路径，`device-passport` 保证无论进程重启多少次，输出的物理硬件、屏幕分辨率、小版本号、请求头完全逐字节一致。
+
+#### Q3: 是否需要像无头浏览器一样吃大量内存？
+不需要。`device-passport` 属于轻量级纯代码库（单实例常驻内存 < 1.5MB）。发 HTTP 请求直接输出 Canonical 请求头；只有当你确实需要启动 Playwright / Puppeteer 浏览器自动化时，才将同一份画像参数喂给浏览器环境。
+
+---
+
 ## 学术引用
 
 如果您在学术论文、风控对抗分析或工业界基准评测中使用了 `device-passport`，欢迎引用本项目：

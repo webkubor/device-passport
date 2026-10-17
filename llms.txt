@@ -1,0 +1,34 @@
+# device-passport
+
+> Digital device passports for scrapers, bots and automation. 100% consistent, stateful browser personas with sticky hardware, correlated Client-Hints, and geo-aligned locales.
+
+- GitHub: https://github.com/webkubor/device-passport
+- Package: device-passport
+- License: MIT
+
+## Core Philosophy
+
+Traditional scrapers get blocked because their User-Agents fluctuate randomly across sessions (the "Shapeshifter Anomaly"), lack high-entropy Client-Hints, or mismatch their proxy IP's geographic timezone.
+`device-passport` generates an immutable, physically plausible 4-tuple persona $P = \langle \mathcal{H}, \mathcal{S}, \mathcal{G}, \mathcal{C} \rangle$ where hardware, OS, locale, and headers are strictly correlated and persistent.
+
+## Key APIs
+
+```typescript
+import { createPassport, PassportManager } from 'device-passport'
+
+// 1. One-liner sticky passport
+const passport = createPassport('account_user_1', { geo: 'US' })
+console.log(passport.headers)
+console.log(passport.userAgent)
+console.log(passport.timezone)
+
+// 2. Playwright integration
+const context = await browser.newContext(passport.playwrightContext)
+
+// 3. Self-evaluation score
+const report = passport.evaluate() // Grade A+ (100% coherence)
+
+// 4. Multi-account fleet management
+const manager = new PassportManager({ store: './passports.json', defaultGeo: 'US' })
+const p = manager.getPassport('alice')
+```

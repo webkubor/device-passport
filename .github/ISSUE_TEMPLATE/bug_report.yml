@@ -1,0 +1,22 @@
+name: Bug Report
+description: Create a report to help us improve device-passport
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for reporting an issue! Please describe what happened.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Minimal Reproduction Code
+      description: Steps or code snippet to reproduce.
+    validations:
+      required: true

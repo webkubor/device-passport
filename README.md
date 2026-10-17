@@ -375,6 +375,31 @@ npx device-passport inspect --seed production_user_102
 
 ---
 
+## API & Configuration Reference
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `seed` | `string \| number` | `undefined` | Deterministic persona seed (account name, proxy IP, worker ID). If omitted, generates an ephemeral persona. |
+| `geo` | `string` | `'US'` | ISO 3166-1 alpha-2 country code (`'US'`, `'JP'`, `'GB'`, etc.) or residential proxy URL. Automatically aligns language & timezone. |
+| `os` | `'windows' \| 'macos'` | `undefined` | Preferred operating system. |
+| `browser` | `'chrome' \| 'edge' \| 'safari'` | `undefined` | Preferred browser family. |
+| `store` | `string \| StorageAdapter` | `undefined` | File path (`'./data/passports.json'`) or custom storage adapter for automatic persistence. |
+
+---
+
+## Frequently Asked Questions (FAQ)
+
+#### Q: How does `device-passport` differ from `fake-useragent`?
+`fake-useragent` only provides a single legacy User-Agent string. Modern anti-bot solutions (Cloudflare, DataDome, Akamai) inspect W3C Client-Hints (`Sec-CH-UA`, `Sec-CH-UA-Platform-Version`, `Sec-CH-UA-Arch`), screen metrics, and WebGL renderers. `device-passport` models the entire 4-tuple device persona with mathematical consistency $C(P) \equiv 1.0$.
+
+#### Q: Will my account keep the same device across server restarts?
+Yes! As long as you provide a constant `seed` (e.g. account username) and specify a `store` path (or pass the same seed), `device-passport` guarantees byte-for-byte identical hardware, browser build, and headers forever.
+
+#### Q: Does it require running a heavy headless browser?
+No. `device-passport` is lightweight (< 1.5MB footprint). It generates headers for pure HTTP requests (`fetch`, `axios`, `got`, `curl`) as well as optional configuration dictionaries for Playwright/Puppeteer when full browser automation is required.
+
+---
+
 ## Academic Citation
 
 If you use `device-passport` in your academic research, empirical benchmarks, or industrial cybersecurity papers, please cite as follows:
