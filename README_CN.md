@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="device-passport banner" width="800"/>
+  <img src="https://cdn.jsdelivr.net/gh/webkubor/free-imgbed@main/device-passport/banner.svg" alt="device-passport banner" width="800"/>
 </p>
 
 <h1 align="center">🛂 device-passport</h1>
@@ -60,7 +60,7 @@
    粗糙脚本的信息熵严重偏低（$H(X) < 4.6$ bits/char）；刻意胡乱添加随机噪点的爬虫信息熵又异常偏高（$H(X) > 5.6$ bits/char）。`device-passport` 严密锚定在真实网民概率分布的自然熵态黄金区间（$5.24$ bits/char）。
 
 <p align="center">
-  <img src="assets/architecture.svg" alt="device-passport 形式化状态流形架构图" width="100%"/>
+  <img src="https://cdn.jsdelivr.net/gh/webkubor/free-imgbed@main/device-passport/architecture.svg" alt="device-passport 形式化状态流形架构图" width="100%"/>
 </p>
 
 ---

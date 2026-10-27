@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="device-passport banner" width="800"/>
+  <img src="https://cdn.jsdelivr.net/gh/webkubor/free-imgbed@main/device-passport/banner.svg" alt="device-passport banner" width="800"/>
 </p>
 
 <h1 align="center">🛂 device-passport</h1>
@@ -59,7 +59,7 @@ Modern anti-bot classifiers (Cloudflare Turnstile, DataDome, Akamai, GitHub Anti
    Under-parameterized headers ($H(X) < 4.6$ bits/char) scream "naive scraper"; chaotic randomized noise ($H(X) > 5.6$ bits/char) screams "evasion bot". `device-passport` operates strictly within the natural human entropy equilibrium ($5.24$ bits/char).
 
 <p align="center">
-  <img src="assets/architecture.svg" alt="device-passport formal state-space architecture" width="100%"/>
+  <img src="https://cdn.jsdelivr.net/gh/webkubor/free-imgbed@main/device-passport/architecture.svg" alt="device-passport formal state-space architecture" width="100%"/>
 </p>
 
 ---
