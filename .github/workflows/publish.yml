@@ -32,10 +32,18 @@ jobs:
       - name: Setup Node for npm publication
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # Trusted Publishing 要求 npm >= 11.5.1。node 20 自带 npm 10.x，
+          # 会直接走 token 认证路径 → ENEEDAUTH（2026-10-17 v1.0.1 那次失败即此）。
+          # 与 ai-orb / im-notify-kit 两条已跑通的发布链路对齐到 24。
+          node-version: '24'
           registry-url: 'https://registry.npmjs.org'
 
+      # 注意：这里**不能**设 NODE_AUTH_TOKEN。
+      # 一旦该环境变量存在（哪怕是空字符串），npm CLI 就认定要走 token 认证，
+      # 不会去换 OIDC 凭据，Trusted Publishing 形同未配。
+      # 2026-10-17 失败日志里 `NODE_AUTH_TOKEN:` 后面就是空的 —— 本仓从未配过
+      # 这个 secret，等于两条认证路径同时断掉。纯 OIDC 即可，无需任何 secret。
       - name: Publish to npm (Provenance & Trusted Publishing)
-        run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "npm $(npm --version) / node $(node --version)"
+          npm publish --access public --provenance
