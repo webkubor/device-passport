@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2026-10-17
+
+### Added
+- **Standard ESM subpath exports**: `device-passport/geo`, `device-passport/storage`, `device-passport/adapters` are now importable as separate entry points, each shipping its own `types` / `import` / `require` conditions. Consumers can tree-shake by pulling only the module they need instead of the whole bundle.
+
+### Fixed
+- **npm publish path**: the release workflow now runs on Node 24 with pure OIDC Trusted Publishing (the previous `NODE_AUTH_TOKEN` pointed at a secret that was never configured, which forced npm down the token-auth path and made Trusted Publishing ineffective).
+
 ## [1.0.0] - 2026-10-17
 
 ### Added

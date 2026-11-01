@@ -49,7 +49,7 @@
     "build": "unbuild",
     "test": "bun test tests/",
     "lint": "tsc --noEmit",
-    "prepublishOnly": "bun run test && bun run build"
+    "prepublishOnly": "npm run build && node scripts/prepublish-gate.mjs && node scripts/readme-gate.mjs && node scripts/version-sync-gate.mjs"
   },
   "keywords": [
     "user-agent",
