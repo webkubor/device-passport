@@ -36,18 +36,17 @@ jobs:
           # 会直接走 token 认证路径 → ENEEDAUTH（2026-10-17 v1.0.1 那次失败即此）。
           # 与 ai-orb / im-notify-kit 两条已跑通的发布链路对齐到 24。
           node-version: '24'
-          # ⚠️ 不要设 registry-url：setup-node 一旦带它，就会自动往环境里注入
-          # NODE_AUTH_TOKEN（取不到 secret 时是一个空/占位值，日志里显示为掩码）。
-          # npm CLI 看到这个变量存在就直接走 token 认证，不再换 OIDC 凭据，
-          # Trusted Publishing 形同未配 —— 2026-11-04 v1.1.0 的 E404 即此。
-          # 2026-10-17 那次的注释把它归因于「NODE_AUTH_TOKEN 为空」，但真源是
-          # registry-url 触发的自动注入；去掉 registry-url 后变量根本不会出现。
+          # registry-url 要留着：它让 setup-node 写出 registry 指向，npm 才会
+          # 对 registry.npmjs.org 走 OIDC 交换。2026-11-04 曾把它去掉，反而变成
+          # ENEEDAUTH（npm 连 OIDC 都没尝试）。
+          registry-url: 'https://registry.npmjs.org'
+          # 发版构建不要开缓存：缓存里的 dist 可能是旧产物。
+          package-manager-cache: false
 
-      # 不能再显式设 NODE_AUTH_TOKEN（哪怕是空字符串）：npm 只看「变量是否存在」，
-      # 存在即走 token 认证 → ENEEDAUTH。删掉 registry-url 后该变量不再被注入，
-      # npm 11.5.1+ 会自动对 registry.npmjs.org 做 OIDC 交换。
+      # 不能设 NODE_AUTH_TOKEN（哪怕是空字符串）：npm 只看「变量是否存在」，
+      # 存在即走 token 认证、不再换 OIDC 凭据。setup-node 在没有对应 secret 时
+      # 注入的是空值，所以这里必须让它彻底不存在 —— 纯 OIDC 即可，无需任何 secret。
       - name: Publish to npm (Provenance & Trusted Publishing)
         run: |
           echo "npm $(npm --version) / node $(node --version)"
-          env | grep -c '^NODE_AUTH_TOKEN=' || true
           npm publish --access public --provenance
