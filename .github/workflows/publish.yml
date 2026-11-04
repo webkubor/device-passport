@@ -43,10 +43,11 @@ jobs:
           # 2026-10-17 那次的注释把它归因于「NODE_AUTH_TOKEN 为空」，但真源是
           # registry-url 触发的自动注入；去掉 registry-url 后变量根本不会出现。
 
+      # 不能再显式设 NODE_AUTH_TOKEN（哪怕是空字符串）：npm 只看「变量是否存在」，
+      # 存在即走 token 认证 → ENEEDAUTH。删掉 registry-url 后该变量不再被注入，
+      # npm 11.5.1+ 会自动对 registry.npmjs.org 做 OIDC 交换。
       - name: Publish to npm (Provenance & Trusted Publishing)
-        env:
-          # 双保险：即便未来某步又注入了它，也在这里清掉，强制走 OIDC。
-          NODE_AUTH_TOKEN: ''
         run: |
           echo "npm $(npm --version) / node $(node --version)"
-          npm publish --access public --provenance --registry=https://registry.npmjs.org
+          env | grep -c '^NODE_AUTH_TOKEN=' || true
+          npm publish --access public --provenance
