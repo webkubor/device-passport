@@ -1,5 +1,6 @@
 import type { DevicePassport } from '../types/index.js'
 import { formatCanonicalHeaders } from './fetch.js'
+import { getPixelProtectionConfig, getPixelProtectionScript } from '../engine/pixel-protection.js'
 
 export interface PlaywrightContextOptions {
   userAgent: string
@@ -56,6 +57,14 @@ export function getPlaywrightContext(passport: DevicePassport): PlaywrightContex
  * Generates an in-page stealth script to patch runtime JavaScript APIs
  * (navigator.webdriver, hardwareConcurrency, deviceMemory, WebGL unmasked vendor/renderer,
  * navigator.userAgentData Client Hints, and Screen dimensions).
+ *
+ * 🔴 API-level spoofing is not enough on its own: `canvas.toDataURL()` and `gl.readPixels()`
+ * still return the **real** framebuffer, so a headless browser exposes SwiftShader while
+ * its UA claims a discrete GPU — and every persona on one machine hashes identically.
+ * The pixel-protection script is therefore appended here, so existing users get
+ * read-back-safe personas without changing their call sites.
+ *
+ * The noise is seeded from the passport seed: stable per account, different per account.
  */
 export function getStealthScript(passport: DevicePassport): string {
   const { hardware, os, locale, browser, clientHints } = passport
@@ -93,7 +102,7 @@ export function getStealthScript(passport: DevicePassport): string {
     ],
   })
 
-  return `
+  const stealthScript = `
 (() => {
   // 1. Remove automation flags
   try {
@@ -101,7 +110,7 @@ export function getStealthScript(passport: DevicePassport): string {
       get: () => undefined,
       configurable: true
     });
-    delete (navigator as any).__proto__.webdriver;
+    delete navigator.__proto__.webdriver;
   } catch (e) {}
 
   // 2. Hardware profile (CPU, Memory)
@@ -146,7 +155,7 @@ export function getStealthScript(passport: DevicePassport): string {
   // 5. Client Hints (navigator.userAgentData)
   try {
     const hintData = ${uachData};
-    if (typeof (navigator as any).userAgentData !== 'undefined' || true) {
+    if (typeof navigator.userAgentData !== 'undefined' || true) {
       const uach = {
         brands: hintData.brands,
         mobile: hintData.mobile,
@@ -202,7 +211,7 @@ export function getStealthScript(passport: DevicePassport): string {
   // 7. Chrome runtime mock for Chromium personas
   try {
     if (!window.chrome) {
-      (window as any).chrome = {
+      window.chrome = {
         app: { isInstalled: false, InstallState: { DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' } },
         runtime: { OnInstalledReason: {}, OnRestartRequiredReason: {} },
         loadTimes: () => ({}),
@@ -212,6 +221,11 @@ export function getStealthScript(passport: DevicePassport): string {
   } catch (e) {}
 })();
 `
+  // Pixel-level protection: real read-back must not leak the host GPU or a shared hash.
+  const pixelProtection = getPixelProtectionScript(
+    getPixelProtectionConfig(passport.seed ?? passport.id ?? 'device-passport')
+  )
+  return `${pixelProtection}\n${stealthScript}`
 }
 
 /**

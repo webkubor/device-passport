@@ -292,6 +292,60 @@ await passport.injectToPuppeteer(page);
 await page.goto('https://bot.sannysoft.com');
 ```
 
+### Raw CDP Integration (lite-browser, custom transports)
+
+Tools that drive Chrome over a bare DevTools Protocol socket cannot use the Playwright or
+Puppeteer adapters, because those return framework-shaped options. `getCdpPlan()` returns
+an ordered, transport-agnostic command plan instead:
+
+```typescript
+import { createPassport, applyCdpPassport } from 'device-passport';
+
+const passport = createPassport({ seed: 'worker_de_19', geo: 'DE', os: 'windows' });
+
+// `send` is yours: a WebSocket, stdio, or an in-process socket.
+await applyCdpPassport(passport, (cmd) => transport.send(cmd.method, cmd.params));
+```
+
+The plan covers `Page.enable`, extra HTTP headers, `Emulation.setUserAgentOverride`
+(with Client-Hints metadata), timezone, locale, device metrics and touch emulation, and
+installs the stealth script through `Page.addScriptToEvaluateOnNewDocument`.
+
+> **`Page.enable` is mandatory.** Without it Chrome accepts the init script, returns an
+> identifier, and then never runs it — the persona stays a plain automation session.
+> `applyCdpPassport` emits it first for that reason.
+
+---
+
+## Pixel-Level Protection
+
+API-level spoofing is not sufficient on its own. `canvas.toDataURL()` and
+`gl.readPixels()` hand back the **real** framebuffer, so a headless browser exposes
+SwiftShader while its User-Agent claims a discrete GPU — and every persona rendered on
+the same machine produces a **byte-identical** canvas hash, which makes a fleet easy to
+cluster.
+
+`getStealthScript()` now appends a deterministic pixel-protection layer that patches
+`toDataURL`, `getImageData`, `readPixels` and the audio analyser:
+
+```typescript
+import { createPassport, getStealthScript } from 'device-passport';
+
+const passport = createPassport('alice');
+const script = getStealthScript(passport);
+// Use with Playwright addInitScript, Puppeteer evaluateOnNewDocument, or CDP.
+```
+
+Properties:
+
+- **Deterministic per seed** — the same account reads back identical pixels forever,
+  which is what makes "sticky hardware" true beyond the API layer.
+- **Distinct per account** — different seeds produce different noise tables.
+- **Plausible** — a discrete quantization of a few levels, not per-pixel dithering. Real
+  GPUs quantize; a smooth ±1 RGB jitter on every pixel is itself a fingerprint.
+- **Self-contained** — dependency-free IIFE, safe to inject repeatedly (re-injection is
+  a no-op).
+
 ---
 
 ## Multi-Account Fleet Management (`PassportManager`)
@@ -411,6 +465,19 @@ npx device-passport inspect --seed production_user_102
  │ Native Fetch │                │  Playwright  │                │  Puppeteer   │
  │   Headers    │                │Context Options│               │ Emulation Hook│
  └──────────────┘                └──────────────┘                └──────────────┘
+                                 │                               │
+                                 └───────────────┬───────────────┘
+                                                 ▼
+                                 ┌───────────────────────────┐
+                                 │  Pixel-Level Protection   │
+                                 │ canvas / WebGL / audio    │
+                                 │ deterministic per seed    │
+                                 └───────────┬───────────────┘
+                                             ▼
+                                 ┌───────────────────────────┐
+                                 │  Raw CDP Command Plan     │
+                                 │ (lite-browser, custom)    │
+                                 └───────────────────────────┘
 ```
 
 ---

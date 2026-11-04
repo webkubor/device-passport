@@ -277,6 +277,53 @@ await passport.injectToPuppeteer(page);
 await page.goto('https://bot.sannysoft.com');
 ```
 
+### 裸 CDP 集成（lite-browser、自定义传输层）
+
+用裸 DevTools Protocol 驱动 Chrome 的工具无法使用 Playwright / Puppeteer 适配器 —— 后者返回的是框架专用结构。
+`getCdpPlan()` 改为返回一份与传输层无关的、有序的命令清单：
+
+```typescript
+import { createPassport, applyCdpPassport } from 'device-passport';
+
+const passport = createPassport({ seed: 'worker_de_19', geo: 'DE', os: 'windows' });
+
+// `send` 由你决定：WebSocket、stdio 或进程内 socket 均可
+await applyCdpPassport(passport, (cmd) => transport.send(cmd.method, cmd.params));
+```
+
+清单覆盖 `Page.enable`、额外 HTTP 头、`Emulation.setUserAgentOverride`（含 Client-Hints 元数据）、
+时区、语言、屏幕尺寸与触摸模拟，并通过 `Page.addScriptToEvaluateOnNewDocument` 注入 stealth 脚本。
+
+> **`Page.enable` 必须先发。** 少了它，Chrome 会接受注入脚本并返回 identifier，却**永远不执行** ——
+> 人设会退化成普通自动化会话。`applyCdpPassport` 因此把它排在第一位。
+
+---
+
+## 像素级保护
+
+只改 API 返回值是不够的。`canvas.toDataURL()` 和 `gl.readPixels()` 交出的是**真实帧缓冲**：
+无头浏览器一边暴露 SwiftShader，一边让 User-Agent 声称独显；更糟的是同一台机器渲染出的所有人设
+canvas 哈希**完全相同**，批量账号极易被聚类识别。
+
+`getStealthScript()` 现在会追加一层确定性的像素保护，改写 `toDataURL`、`getImageData`、
+`readPixels` 与音频分析器：
+
+```typescript
+import { createPassport, getStealthScript } from 'device-passport';
+
+const passport = createPassport('alice');
+const script = getStealthScript(passport);
+// 可用于 Playwright addInitScript、Puppeteer evaluateOnNewDocument 或 CDP。
+```
+
+特性：
+
+- **按 seed 确定性** —— 同一账号永远读回同样的像素，这才让「硬件粘性」在 API 之外也成立。
+- **按账号互不相同** —— 不同 seed 生成不同噪声表。
+- **可信** —— 采用少数离散量化档位，而非逐像素抖动。真实 GPU 会量化；
+  每个像素都平滑 ±1 的抖动本身也是一种指纹。
+- **零依赖** —— 纯 IIFE，重复注入安全（再次注入直接跳过）。
+
 ---
 
 ## 多账号矩阵管理 (`PassportManager`)
