@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2026-11-04
 
 ### Added
 - **Pixel-level protection**: `getStealthScript()` now appends a deterministic noise layer that patches `canvas.toDataURL()`, `getImageData()`, `gl.readPixels()` and the audio analyser, so read-back no longer exposes the host GPU or a shared hash across personas. The noise is derived from the passport seed — stable per account, distinct per account — and uses discrete quantization levels rather than per-pixel dithering, because a smooth ±1 RGB jitter is itself a fingerprint.
