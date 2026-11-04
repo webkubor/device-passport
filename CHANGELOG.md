@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Pixel-level protection**: `getStealthScript()` now appends a deterministic noise layer that patches `canvas.toDataURL()`, `getImageData()`, `gl.readPixels()` and the audio analyser, so read-back no longer exposes the host GPU or a shared hash across personas. The noise is derived from the passport seed — stable per account, distinct per account — and uses discrete quantization levels rather than per-pixel dithering, because a smooth ±1 RGB jitter is itself a fingerprint.
+- **Raw CDP adapter**: `getCdpPlan()` and `applyCdpPassport()` emit an ordered, transport-agnostic Chrome DevTools Protocol command plan for tools that speak bare CDP (e.g. `lite-browser`'s `cdp` channel). Covers headers, `Emulation.setUserAgentOverride` with Client-Hints metadata, timezone, locale, device metrics, touch emulation and init-script installation.
+
+### Fixed
+- **Canvas serialization recursion**: the temporary canvas used for re-serialization shares the patched prototype, so calling its `toDataURL` recursed until the stack limit. Serialization now uses the captured original method (verified with 25 repeated calls in real Chromium).
+- **WebGL canvases leaked the real framebuffer through `toDataURL()`**: a canvas with a WebGL context returns `null` from `getContext('2d')`, so that path silently skipped protection. Pixel perturbation now runs through `gl.readPixels` for such canvases.
+- **Alpha bytes were perturbed**: RGBA alpha now stays untouched, so transparent and opaque pixels keep their semantics (masks and hit-testing unaffected).
+- **Audio perturbation was seed-independent**: a fixed `1e-7` step was identical for every persona and rounded away in Float32 at typical dB values. The step is now seed-derived and representable.
+- **Injected stealth script was invalid JavaScript**: the runtime script embedded TypeScript-only syntax (`navigator as any`), which raised a `SyntaxError` in the page and silently disabled the **entire** stealth layer — `navigator.webdriver` stayed `true` and every spoofed API reverted to the real values. The script is now valid browser JavaScript, and a regression test parses it to prevent this from returning.
+- **CDP init scripts never executed**: `Page.addScriptToEvaluateOnNewDocument` was issued without `Page.enable`. Chrome accepted the script, returned an identifier and then never ran it, so a CDP-driven persona looked like a plain automation session. `Page.enable` is now emitted first, with a regression test covering the ordering.
+
 ## [1.0.1] - 2026-10-17
 
 ### Added
