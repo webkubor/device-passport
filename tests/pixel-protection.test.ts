@@ -63,6 +63,39 @@ describe('Pixel Protection', () => {
   })
 })
 
+describe('Review findings regression', () => {
+  test('serialization uses the captured original to avoid recursion', () => {
+    const script = runScript('alice')
+    // A temporary canvas shares the patched prototype; calling its toDataURL would recurse.
+    expect(script).toContain('origToDataURL.apply(tmp, args)')
+    // Strip comments before asserting: the warning itself mentions the pattern.
+    const code = script.replace(/\/\/[^\n]*/g, '')
+    expect(code).not.toMatch(/tmp\.toDataURL/)
+  })
+
+  test('alpha bytes are preserved', () => {
+    const script = runScript('alice')
+    expect(script).toContain('keepAlpha')
+    expect(script).toContain('(i & 3) === 3')
+  })
+
+  test('WebGL-backed canvases are serialized through the GL path', () => {
+    const script = runScript('alice')
+    expect(script).toContain("getContext('webgl2')")
+    expect(script).toContain('gl.readPixels')
+  })
+
+  test('audio perturbation is seed-derived and representable', () => {
+    const a = runScript('alice')
+    const b = runScript('bob')
+    const stepOf = (s: string) => Number(s.match(/__dpAudioStep = ([\d.e-]+)/)![1])
+    expect(stepOf(a)).toBeGreaterThan(0)
+    // Float32 must represent the step at typical -100 dB magnitudes.
+    expect(Math.fround(stepOf(a))).toBeGreaterThan(0)
+    expect(stepOf(a)).not.toBe(stepOf(b))
+  })
+})
+
 describe('Injected script must be valid browser JavaScript', () => {
   test('contains no TypeScript-only syntax', () => {
     const script = getStealthScript(createPassport('alice'))

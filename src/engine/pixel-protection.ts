@@ -82,35 +82,76 @@ export function getPixelProtectionScript(config: CanvasNoiseConfig): string {
   const tableLiteral = (table: Uint8Array) =>
     `[${Array.from(table).join(',')}]`;
 
+  // Seed-derived audio step: distinct per persona, representable in Float32.
+  const audioRand = createDeterministicPRNG(deriveSeed(config.seed, 'audio'));
+  const audioStep = Number((5e-4 + audioRand() * 15e-4).toPrecision(6));
+
   return `(() => {
   const __dpCanvasTable = new Uint8Array(${tableLiteral(canvasTable)});
   const __dpWebglTable = new Uint8Array(${tableLiteral(webglTable)});
   const __dpAmplitude = ${amplitude};
+  const __dpAudioStep = ${audioStep};
   if (window.__devicePassportPixelProtection) return;
 
-  const __dpApply = (data, table) => {
+  const __dpApply = (data, table, keepAlpha) => {
     if (!data || __dpAmplitude === 0) return data;
     const bytes = data instanceof Uint8Array ? data : new Uint8Array(data.buffer || data);
-    for (let i = 0; i < bytes.length; i++) bytes[i] = table[bytes[i]];
+    for (let i = 0; i < bytes.length; i++) {
+      // RGBA layout: every fourth byte is alpha. Perturbing it would fabricate
+      // transparency and break masks and hit-testing.
+      if (keepAlpha && (i & 3) === 3) continue;
+      bytes[i] = table[bytes[i]];
+    }
     return bytes;
   };
 
   // ---- 2D canvas read-back -------------------------------------------------
   if (${enable2d ? 'true' : 'false'}) {
     const origToDataURL = HTMLCanvasElement.prototype.toDataURL;
+
+    // A WebGL-backed canvas cannot hand out a 2D context, so its pixels must be read
+    // through the GL path — otherwise toDataURL() leaks the real framebuffer.
+    const __dpReadPixels = (canvas) => {
+      try {
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        if (!gl) return null;
+        const w = canvas.width, h = canvas.height;
+        if (!w || !h) return null;
+        const buf = new Uint8Array(w * h * 4);
+        gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+        return buf;
+      } catch (e) {
+        return null;
+      }
+    };
+
     HTMLCanvasElement.prototype.toDataURL = function(...args) {
       const out = origToDataURL.apply(this, args);
       try {
-        const ctx = this.getContext('2d');
-        if (!ctx) return out;
         const { width, height } = this;
         if (!width || !height) return out;
-        const img = ctx.getImageData(0, 0, width, height);
-        __dpApply(img.data, __dpCanvasTable);
+
+        const ctx = this.getContext('2d');
+        let img;
+        if (ctx) {
+          img = ctx.getImageData(0, 0, width, height);
+          __dpApply(img.data, __dpCanvasTable, true);
+        } else {
+          // WebGL canvas: perturb the raw framebuffer instead of giving up.
+          const buf = __dpReadPixels(this);
+          if (!buf) return out;
+          __dpApply(buf, __dpWebglTable, true);
+          img = new ImageData(new Uint8ClampedArray(buf.buffer || buf), width, height);
+        }
+
         const tmp = document.createElement('canvas');
         tmp.width = width; tmp.height = height;
-        tmp.getContext('2d').putImageData(img, 0, 0);
-        return tmp.toDataURL.apply(tmp, args);
+        const tmpCtx = tmp.getContext('2d');
+        if (!tmpCtx) return out;
+        tmpCtx.putImageData(img, 0, 0);
+        // MUST use the captured original: tmp shares the patched prototype, so calling
+        // tmp.toDataURL() would recurse and serialize canvases until the stack blows.
+        return origToDataURL.apply(tmp, args);
       } catch (e) {
         return out;
       }
@@ -119,7 +160,7 @@ export function getPixelProtectionScript(config: CanvasNoiseConfig): string {
     const origGetImageData = CanvasRenderingContext2D.prototype.getImageData;
     CanvasRenderingContext2D.prototype.getImageData = function(...args) {
       const img = origGetImageData.apply(this, args);
-      try { __dpApply(img.data, __dpCanvasTable); } catch (e) {}
+      try { __dpApply(img.data, __dpCanvasTable, true); } catch (e) {}
       return img;
     };
   }
@@ -133,7 +174,7 @@ export function getPixelProtectionScript(config: CanvasNoiseConfig): string {
         const out = origReadPixels.apply(this, args);
         try {
           const target = args[6];
-          if (target) __dpApply(target, __dpWebglTable);
+          if (target) __dpApply(target, __dpWebglTable, true);
         } catch (e) {}
         return out;
       };
@@ -144,23 +185,27 @@ export function getPixelProtectionScript(config: CanvasNoiseConfig): string {
 
   // ---- Audio fingerprint ---------------------------------------------------
   // Same rationale as canvas: the real oscillator profile is machine-identical.
+  // The perturbation MUST be seed-derived (a fixed step is identical for every persona
+  // and therefore shared across accounts) and large enough to survive Float32 rounding
+  // at typical -60..-100 dB values.
   try {
     const OrigAudioContext = window.AudioContext || window.webkitAudioContext;
     if (OrigAudioContext) {
-      const origCreateOscillator = OrigAudioContext.prototype.createOscillator;
       const origGetFloatFrequencyData = AudioAnalyserNode.prototype.getFloatFrequencyData;
       AudioAnalyserNode.prototype.getFloatFrequencyData = function(...args) {
         const out = origGetFloatFrequencyData.apply(this, args);
         try {
           const arr = args[0];
           if (arr && arr.length) {
-            const step = 1e-7;
-            for (let i = 0; i < arr.length; i++) arr[i] += (i % 2 === 0 ? step : -step);
+            for (let i = 0; i < arr.length; i++) {
+              const sign = i % 2 === 0 ? 1 : -1;
+              // 1e-3 is representable in Float32 even for values around -100 dB.
+              arr[i] = arr[i] + sign * __dpAudioStep * (1 + (i % 7) * 0.1);
+            }
           }
         } catch (e) {}
         return out;
       };
-      void origCreateOscillator;
     }
   } catch (e) {}
 
