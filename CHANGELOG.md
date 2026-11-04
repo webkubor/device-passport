@@ -7,13 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-11-04
 
-> ⚠️ 发布受阻说明：本版本代码已合并并打好 tag，但 **npm 发布尚未完成** ——
-> `device-passport` 在 npmjs.com 上没有配置 Trusted Publisher 信任关系。
-> 证据：`device-passport@1.0.0` 没有 OIDC attestation（对比 `im-notify-kit@0.4.1` 有），
-> 说明该包从未成功走通 OIDC 通道；workflow 里的 `id-token: write` 只是必要条件，
-> 不是充分条件。需要在 npmjs.com → Packages → device-passport → Settings →
-> Trusted Publisher 里登记：GitHub Actions / 组织 `webkubor` / 仓库 `device-passport` /
-> 工作流 `publish.yml`，并允许 `npm publish`。登记后 2 天内需完成首次发布，否则配置过期。
 
 ### Added
 - **Pixel-level protection**: `getStealthScript()` now appends a deterministic noise layer that patches `canvas.toDataURL()`, `getImageData()`, `gl.readPixels()` and the audio analyser, so read-back no longer exposes the host GPU or a shared hash across personas. The noise is derived from the passport seed — stable per account, distinct per account — and uses discrete quantization levels rather than per-pixel dithering, because a smooth ±1 RGB jitter is itself a fingerprint.
