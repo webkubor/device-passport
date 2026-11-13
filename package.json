@@ -27,6 +27,11 @@
       "import": "./dist/adapters/index.mjs",
       "require": "./dist/adapters/index.cjs"
     },
+    "./ego": {
+      "types": "./dist/ego/index.d.ts",
+      "import": "./dist/ego/index.mjs",
+      "require": "./dist/ego/index.cjs"
+    },
     "./evaluator": {
       "types": "./dist/evaluator/index.d.ts",
       "import": "./dist/evaluator/index.mjs",

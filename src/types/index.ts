@@ -8,6 +8,8 @@ import type { PassportEvaluation } from './metrics.js';
 
 export * from './geo.js';
 export * from './metrics.js';
+export * from './cdp.js';
+export * from './ego.js';
 
 // ==========================================
 // Browser & OS Profiles

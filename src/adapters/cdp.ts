@@ -1,4 +1,4 @@
-import type { DevicePassport } from '../types/index.js'
+import type { CdpCommand, CdpPassportPlan, DevicePassport } from '../types/index.js'
 import { formatCanonicalHeaders } from './fetch.js'
 import { getStealthScript } from './playwright.js'
 
@@ -15,24 +15,6 @@ import { getStealthScript } from './playwright.js'
  * applies every command in order. The caller owns the transport, so this module has no
  * dependency and works over WebSocket, stdio, or an in-process socket.
  */
-
-export interface CdpCommand {
-  method: string
-  params?: Record<string, unknown>
-  /** `sessionId` is required for page-scoped domains when using flattened sessions. */
-  sessionId?: string
-}
-
-export interface CdpPassportPlan {
-  /** Ordered commands to apply the passport to a target. */
-  commands: CdpCommand[]
-  /** Init scripts to install on every new document. */
-  initScripts: { source: string }[]
-  /** Extra HTTP headers to set on the session. */
-  headers: Record<string, string>
-  /** The raw stealth + pixel-protection script, for callers that prefer their own path. */
-  stealthScript: string
-}
 
 /**
  * Builds the ordered CDP command plan for a passport.

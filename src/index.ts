@@ -32,6 +32,9 @@ export * from './adapters'
 // --- Storage Adapters ---
 export * from './storage'
 
+// --- ego-lite Account Profile Layer ---
+export * from './ego'
+
 // --- Evaluator & Academic Metrics ---
 export * from './evaluator'
 
