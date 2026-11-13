@@ -377,6 +377,45 @@ const fleetSnapshot = await manager.exportAll();
 
 ---
 
+## ego-lite Account Profiles (`AccountProfileManager`)
+
+When the browser is [ego-lite](https://github.com/citrolabs/ego-lite), one account maps to three things that must travel together: a sticky passport, an ego-lite **profile** binding (cookies and login state persist per profile), and a **proxy declaration**.
+
+```typescript
+import { AccountProfileManager } from 'device-passport/ego';
+
+const manager = new AccountProfileManager({
+  store: './data/accounts.json',   // atomic JSON persistence
+  // bridge: egoLiteBridge,          // optional; inject ego-lite's native bridge
+});
+
+// List the profiles ego-lite already has — there is no create-profile API.
+const profiles = await manager.listEgoProfiles();   // [{ id, name, isDefault }]
+
+// Bind one account (seed) to one profile and declare its proxy.
+await manager.bindProfile('account_9041', {
+  profileId: 'Profile 2',
+  proxy: { url: 'http://user-jp:pass@gate.example.com:7000', description: 'Tokyo residential exit', country: 'JP' },
+});
+
+// The complete launch plan: CDP commands, init scripts, headers, profileId, proxy declaration.
+const plan = await manager.createSessionPlan('account_9041');
+plan.readiness;   // 'ready' | 'missing-proxy' | 'missing-profile'
+plan.launchable;  // true only when a proxy is declared
+```
+
+### ⚠️ The proxy gap, stated plainly
+
+**ego-lite cannot configure a proxy at the browser layer, and neither can this library.**
+
+- CDP has no `Browser.setProxySettings` — Chromium has never shipped one.
+- `--proxy-server` is a browser **launch** flag on the process, not a CDP command; it cannot be changed after the profile is running.
+- ego-lite's native bindings expose no proxy setter either.
+
+A proxy is therefore bound **outside the browser**: at the OS level (system proxy / TUN / transparent redirect), or by routing the ego-lite process through a local forwarder that owns the upstream proxy. This layer refuses to fake it: an account profile is `ready` only when a proxy is **declared**, `missing-proxy` otherwise, and every session plan repeats that state (`plan.proxy.bound`, `plan.proxy.resolution === 'system-level'`) so an unbound proxy can never be mistaken for an effective one.
+
+---
+
 ## Self-Diagnostic Coherence Evaluation
 
 Verify any passport or raw external request headers against the theoretical coherence framework:

@@ -382,16 +382,18 @@ export function createPassport(
         ? new JSONFileStorage<DevicePassport>({ filePath: options.store })
         : options.store
 
-    if (storage.hasSync && storage.hasSync(options.seed)) {
-      const existing = (storage as any).getSync(options.seed)
+    const seedKey = String(options.seed)
+
+    if (storage.hasSync?.(seedKey) && storage.getSync) {
+      const existing = storage.getSync(seedKey)
       if (existing) return new DevicePassportInstance(existing)
     }
 
     const generated = generatePassport(options)
     if (storage.setSync) {
-      storage.setSync(options.seed, generated)
+      storage.setSync(seedKey, generated)
     } else {
-      storage.set(options.seed, generated).catch(() => {})
+      storage.set(seedKey, generated).catch(() => {})
     }
     return new DevicePassportInstance(generated)
   }

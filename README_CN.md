@@ -354,6 +354,45 @@ const snapshot = await manager.exportAll();
 
 ---
 
+## ego-lite 账号档案管理层 (`AccountProfileManager`)
+
+当浏览器是 [ego-lite](https://github.com/citrolabs/ego-lite) 时，一个账号需要同时绑定三样东西：**粘性通行证**、ego-lite **浏览器 Profile**（Cookie 与登录态按 Profile 持久化）、以及**代理声明**。
+
+```typescript
+import { AccountProfileManager } from 'device-passport/ego';
+
+const manager = new AccountProfileManager({
+  store: './data/accounts.json',   // 原子写入的 JSON 持久化
+  // bridge: egoLiteBridge,          // 可选：注入 ego-lite 原生 bridge
+});
+
+// 列出 ego-lite 已有的 Profile —— 注意：ego-lite 没有「创建 Profile」的 API
+const profiles = await manager.listEgoProfiles();   // [{ id, name, isDefault }]
+
+// 把一个账号（seed）绑定到某个 Profile，并声明它的代理
+await manager.bindProfile('account_9041', {
+  profileId: 'Profile 2',
+  proxy: { url: 'http://user-jp:pass@gate.example.com:7000', description: '东京住宅出口', country: 'JP' },
+});
+
+// 生成完整启动方案：CDP 命令序列、init scripts、headers、profileId、代理声明
+const plan = await manager.createSessionPlan('account_9041');
+plan.readiness;   // 'ready' | 'missing-proxy' | 'missing-profile'
+plan.launchable;  // 仅当已声明代理时才为 true
+```
+
+### ⚠️ 代理缺口：必须说清楚的一件事
+
+**ego-lite 无法在浏览器层配置代理，本库同样无法做到。**
+
+- CDP 协议没有 `Browser.setProxySettings` —— Chromium 从未提供过这个命令。
+- `--proxy-server` 是浏览器进程的**启动参数**，不是 CDP 命令；Profile 已经在运行时无法更改。
+- ego-lite 的原生绑定里也没有任何设置代理的接口。
+
+因此代理必须在**浏览器之外**绑定：系统层面（系统代理 / TUN / 透明转发），或让 ego-lite 进程整体走一个持有上游代理的本地转发器。本层拒绝伪造这一能力：账号档案只有在**已声明代理**时才是 `ready`，否则一律是 `missing-proxy`；每份启动方案都会复述该状态（`plan.proxy.bound`、`plan.proxy.resolution === 'system-level'`），确保「没绑代理」永远不会被误读成「代理已生效」。
+
+---
+
 ## 一致性审计与自检评分 (`passport.evaluate()`)
 
 你可以随时对生成的通行证实例，或对历史抓包拿到的原始 Headers 发起形式化自检与一致性审计：

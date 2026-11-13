@@ -166,12 +166,17 @@ export function toLocaleProfile(geo: GeoContext) {
 
 /**
  * Format GeoContext into a GeoLocation object for browser geolocation emulation.
+ *
+ * `GeoContext.coordinates` is optional; when it is absent this falls back to the
+ * country's representative coordinates — the same source `alignGeoContext` uses,
+ * so the emulated geolocation never contradicts the country/timezone pairing.
  */
 export function toGeoLocation(geo: GeoContext) {
+  const coordinates = geo.coordinates ?? getCountryConfig(geo.country).coordinates;
   return {
-    latitude: geo.coordinates.latitude,
-    longitude: geo.coordinates.longitude,
-    accuracy: geo.coordinates.accuracy ?? 1000,
+    latitude: coordinates.latitude,
+    longitude: coordinates.longitude,
+    accuracy: coordinates.accuracy ?? 1000,
     country: geo.country,
     countryCode: geo.country,
     timezone: geo.timezone,

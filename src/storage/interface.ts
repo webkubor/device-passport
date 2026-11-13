@@ -34,4 +34,18 @@ export interface StorageAdapter<T = any> {
    * Clear all items in this storage.
    */
   clear(): Promise<void>
+
+  /**
+   * Optional synchronous capability.
+   *
+   * Backends that can read and write without a microtask boundary (MemoryStorage,
+   * JSONFileStorage) implement these; adapters backed by a network or database
+   * usually do not. Callers must feature-detect before using them.
+   */
+  getSync?(key: string): T | null
+  setSync?(key: string, value: T): void
+  hasSync?(key: string): boolean
+  deleteSync?(key: string): boolean
+  keysSync?(): string[]
+  clearSync?(): void
 }

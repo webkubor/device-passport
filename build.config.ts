@@ -6,6 +6,7 @@ export default defineBuildConfig({
     'src/geo/index',
     'src/storage/index',
     'src/adapters/index',
+    'src/ego/index',
     'src/evaluator/index',
     'src/types/index',
   ],

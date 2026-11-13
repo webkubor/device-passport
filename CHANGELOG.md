@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-11-14
+
+### Added
+- **ego-lite account profile layer** (`device-passport/ego`): `AccountProfileManager` maps one account (seed) onto a sticky passport, an ego-lite profile binding and a proxy declaration. It lists the profiles ego-lite already has (there is no create-profile API), binds an account to one of them, and produces a complete launch plan — ordered CDP commands, init scripts, canonical headers, the `profileId`, and the proxy declaration. The proxy is modelled as a declared *gap*, not a feature: ego-lite has no browser-level proxy API (CDP has no `Browser.setProxySettings`, `--proxy-server` is a launch flag rather than a CDP command, and the native bindings expose no proxy setter), so a profile reports `ready` only when a proxy is declared and `missing-proxy` otherwise, and every plan repeats `proxy.bound` / `proxy.resolution === 'system-level'` so an unbound proxy can never be mistaken for an effective one. The proxy must be bound outside the browser (OS proxy / TUN / local forwarder). The passports are persisted with the same durability as the account records, so a restart cannot silently regenerate a persona with a different geo context while keeping the same passport id.
+- **`passportStore` option on `AccountProfileManager`**: account records and personas are two different kinds of state. Persisting only the records left the persona living in memory, so a restart regenerated it from the default geo — the identity drifted while its `id` stayed the same and no caller could tell. The option makes the persona survive a restart for real, and `createSessionPlan()` now aligns the persona's geo context with the declared proxy country so the browser's claimed country and the traffic's exit country cannot diverge.
+- **`EgoSessionPlan` now extends `CdpPassportPlan`**: re-declaring `commands` / `initScripts` / `headers` let the two shapes drift apart and silently dropped `stealthScript` from the plan. The plan also carries its `sessionId` on the init script itself, so a caller that sends `plan.initScripts` directly cannot drop it.
+- **Single source for the profile id**: the session plan takes the profile id from the persisted account record only. Accepting a caller-supplied profile id as well let the plan's profile id and its readiness disagree, and a session could be launched under a profile that was never validated.
+
 ## [1.1.0] - 2026-11-04
 
 
@@ -13,6 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Raw CDP adapter**: `getCdpPlan()` and `applyCdpPassport()` emit an ordered, transport-agnostic Chrome DevTools Protocol command plan for tools that speak bare CDP (e.g. `lite-browser`'s `cdp` channel). Covers headers, `Emulation.setUserAgentOverride` with Client-Hints metadata, timezone, locale, device metrics, touch emulation and init-script installation.
 
 ### Fixed
+- **Type-check baseline was red**: `bun run lint` failed on a clean checkout — `toGeoLocation()` dereferenced the optional `GeoContext.coordinates`, and `createPassport()` called the synchronous storage helpers that the `StorageAdapter` interface never declared. The sync capability is now declared on the interface as optional, and `toGeoLocation()` falls back to the country's representative coordinates so an emulated geolocation can never contradict the country/timezone pairing.
+- **`tsconfig.json` rejected by modern TypeScript**: the deprecated `baseUrl` option (unused — the `@/*` alias has no importers) broke `tsc --noEmit` on TypeScript 6, and node globals were unresolvable because `types` was never declared. Both are fixed, so the lint gate passes on TypeScript 5 and 6 alike.
 - **Canvas serialization recursion**: the temporary canvas used for re-serialization shares the patched prototype, so calling its `toDataURL` recursed until the stack limit. Serialization now uses the captured original method (verified with 25 repeated calls in real Chromium).
 - **WebGL canvases leaked the real framebuffer through `toDataURL()`**: a canvas with a WebGL context returns `null` from `getContext('2d')`, so that path silently skipped protection. Pixel perturbation now runs through `gl.readPixels` for such canvases.
 - **Alpha bytes were perturbed**: RGBA alpha now stays untouched, so transparent and opaque pixels keep their semantics (masks and hit-testing unaffected).
