@@ -356,6 +356,8 @@ const snapshot = await manager.exportAll();
 
 ## ego-lite 账号档案管理层 (`AccountProfileManager`)
 
+![device-passport ego-lite 账号档案管理层 —— 真实运行输出](assets/ego-profile-manager.png)
+
 当浏览器是 [ego-lite](https://github.com/citrolabs/ego-lite) 时，一个账号需要同时绑定三样东西：**粘性通行证**、ego-lite **浏览器 Profile**（Cookie 与登录态按 Profile 持久化）、以及**代理声明**。
 
 ```typescript
