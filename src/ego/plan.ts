@@ -80,8 +80,6 @@ export function buildProxyDeclaration(profile: EgoAccountProfile): EgoProxyDecla
  * Options for {@link buildEgoSessionPlan}.
  */
 export interface BuildEgoSessionPlanOptions {
-  /** The ego-lite profile id the session runs under. */
-  profileId: string
   /** Optional task space name. Defaults to a name derived from the seed. */
   taskSpaceName?: string
   /** Optional CDP session id to attach to every command. */
@@ -96,14 +94,20 @@ export interface BuildEgoSessionPlanOptions {
  * runs), the user-agent override precedes navigation, and the init script is
  * installed last so it is in place before the first document is created.
  *
+ * The profile id has exactly one source: the persisted account record. Accepting
+ * a second, caller-supplied profile id would let the plan's profile id and its
+ * readiness disagree, and a caller could end up launching a session under a
+ * profile that was never validated.
+ *
  * @param passport The sticky passport for the account.
- * @param profile The persisted account profile (supplies the proxy declaration).
- * @param options Profile id, task space name and session id.
+ * @param profile The persisted account profile (supplies the profile id and the
+ *   proxy declaration).
+ * @param options Task space name and session id.
  */
 export function buildEgoSessionPlan(
   passport: DevicePassport,
   profile: EgoAccountProfile,
-  options: BuildEgoSessionPlanOptions,
+  options: BuildEgoSessionPlanOptions = {},
 ): EgoSessionPlan {
   const cdpPlan = getCdpPlan(passport, options.sessionId)
   const readiness = getProfileReadiness(profile)
@@ -111,11 +115,9 @@ export function buildEgoSessionPlan(
 
   return {
     seed: profile.seed,
-    profileId: options.profileId,
+    profileId: profile.profileId,
     taskSpaceName: options.taskSpaceName ?? defaultTaskSpaceName(profile.seed),
-    commands: cdpPlan.commands,
-    initScripts: cdpPlan.initScripts,
-    headers: cdpPlan.headers,
+    ...cdpPlan,
     proxy,
     readiness,
     launchable: readiness === 'ready',

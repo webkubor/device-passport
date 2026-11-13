@@ -24,7 +24,7 @@
  * "proxy applied".
  */
 
-import type { CdpCommand, CdpInitScript } from './cdp.js'
+import type { CdpPassportPlan } from './cdp.js'
 
 // ==========================================
 // ego-lite profile listing
@@ -152,20 +152,18 @@ export interface EgoProxyDeclaration {
 
 /**
  * Everything required to start one account session in ego-lite.
+ *
+ * Extends {@link CdpPassportPlan} so the CDP payload has exactly one definition.
+ * Re-declaring `commands` / `initScripts` / `headers` here would let the two
+ * shapes drift apart, and would silently drop `stealthScript` from the plan.
  */
-export interface EgoSessionPlan {
+export interface EgoSessionPlan extends CdpPassportPlan {
   /** The account seed this plan belongs to. */
   seed: string
   /** The ego-lite profile the session must run under. */
   profileId: string
   /** Suggested task space name (unique per launch attempt). */
   taskSpaceName: string
-  /** Ordered CDP commands — `Page.enable` first, UA override before navigation. */
-  commands: CdpCommand[]
-  /** Init scripts to install before the first navigation. */
-  initScripts: CdpInitScript[]
-  /** Canonical HTTP headers for this persona. */
-  headers: Record<string, string>
   /** The proxy declaration, with its `bound` state spelled out. */
   proxy: EgoProxyDeclaration
   /** Readiness of the underlying account profile. */

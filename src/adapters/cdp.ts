@@ -113,7 +113,9 @@ export function getCdpPlan(passport: DevicePassport, sessionId?: string): CdpPas
 
   return {
     commands,
-    initScripts: [{ source: stealthScript }],
+    // The session id is part of the script record itself, so a caller that sends
+    // `plan.initScripts` directly cannot drop it.
+    initScripts: [{ source: stealthScript, ...(sessionId ? { sessionId } : {}) }],
     headers: canonicalHeaders,
     stealthScript,
   }

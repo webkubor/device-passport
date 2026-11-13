@@ -44,6 +44,22 @@ export interface AccountProfileManagerOptions {
   store?: string | StorageAdapter<EgoAccountProfile>
 
   /**
+   * Storage backend for the sticky passports (seed → persona).
+   *
+   * 🔴 Why this is separate from {@link store}:
+   *   Account records and personas are two different kinds of state with two
+   *   different lifetimes. Persisting the records but not the personas means a
+   *   restart regenerates the persona from the default geo — the persona silently
+   *   changes while its `id` stays the same, so no caller can tell it drifted.
+   *   Persisting both makes the identity survive a restart for real.
+   *
+   * - String path → creates a `JSONFileStorage` automatically (atomic writes).
+   * - StorageAdapter instance → custom backend.
+   * - Omitted → falls back to `passportOptions.store`, then `MemoryStorage`.
+   */
+  passportStore?: string | StorageAdapter<DevicePassport>
+
+  /**
    * The passport manager that owns the sticky identities.
    * When omitted, an internal one is created from {@link passportOptions}.
    */
@@ -104,8 +120,16 @@ export class AccountProfileManager {
       this.storage = new MemoryStorage<EgoAccountProfile>()
     }
 
+    // 🔴 The passport must be persisted with the same durability as the account
+    //    record. If only the record is persisted, a restart regenerates the
+    //    persona from the default geo and the identity silently drifts.
+    const passportStore = options.passportStore ?? options.passportOptions?.store
     this.passportManager =
-      options.passportManager ?? new PassportManager(options.passportOptions)
+      options.passportManager ??
+      new PassportManager({
+        ...options.passportOptions,
+        ...(passportStore !== undefined ? { store: passportStore } : {}),
+      })
     this.bridge = options.bridge
   }
 
@@ -179,11 +203,21 @@ export class AccountProfileManager {
       }
     }
 
+    const existing = await this.storage.get(seedStr)
+
     // The sticky passport is created (or reused) first: binding a profile must never
     // change the persona an account already has.
-    const passport = await this.passportManager.getPassport(seedStr, passportOptions)
+    //
+    // 🔴 The declared proxy country has to take part in the *first* generation.
+    //    A passport is sticky, so once it exists its geo context is frozen —
+    //    aligning it later in `createSessionPlan()` would be too late, and the
+    //    browser would claim one country while the traffic leaves from another.
+    const effectiveProxy = options.proxy !== undefined ? options.proxy : existing?.proxy ?? null
+    const passport = await this.passportManager.getPassport(seedStr, {
+      ...passportOptions,
+      ...(effectiveProxy?.country ? { geo: effectiveProxy.country } : {}),
+    })
 
-    const existing = await this.storage.get(seedStr)
     const proxy = options.proxy !== undefined ? options.proxy : existing?.proxy ?? null
 
     const record: EgoAccountProfile = {
@@ -254,9 +288,13 @@ export class AccountProfileManager {
       throw new Error(`[ego] no account profile for seed ${seedStr}`)
     }
 
-    const passport = await this.passportManager.getPassport(seedStr)
+    const passport = await this.passportManager.getPassport(seedStr, {
+      // The exit IP's country must match the persona's geo context, otherwise the
+      // browser claims one country while the traffic leaves from another — the
+      // classic "geo divergence" that anti-bot classifiers score on.
+      ...(profile.proxy?.country ? { geo: profile.proxy.country } : {}),
+    })
     return buildEgoSessionPlan(passport.profile, profile, {
-      profileId: profile.profileId,
       taskSpaceName: options.taskSpaceName,
       sessionId: options.sessionId,
     })

@@ -91,6 +91,40 @@ describe('ego-lite account profile manager', () => {
       expect(passport.id).toBe(firstPassport.id)
       expect(passport.browser.userAgent).toBe(firstPassport.browser.userAgent)
     })
+
+    it('survives a real restart: file-backed store keeps the persona, not just its id', async () => {
+      // 🔴 A restart is the case that matters. With the persona living only in
+      //    memory, the passport id stays the same while the geo context silently
+      //    changes — so this asserts the *content* (timezone, language, GPU),
+      //    never the id alone.
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dp-ego-restart-'))
+      const accountFile = path.join(dir, 'accounts.json')
+      const passportFile = path.join(dir, 'passports.json')
+
+      const first = new AccountProfileManager({
+        store: accountFile,
+        passportStore: passportFile,
+        bridge: createFakeBridge(DEFAULT_PROFILES),
+      })
+      await first.bindProfile('alice', { profileId: 'Default', proxy: PROXY })
+      const before = await first.createSessionPlan('alice')
+
+      // A brand new manager over the same files — nothing carried over in memory.
+      const second = new AccountProfileManager({
+        store: accountFile,
+        passportStore: passportFile,
+        bridge: createFakeBridge(DEFAULT_PROFILES),
+      })
+      const after = await second.createSessionPlan('alice')
+
+      expect(after.commands.length).toBe(before.commands.length)
+      expect(after.headers['accept-language']).toBe(before.headers['accept-language'])
+      expect(after.initScripts[0].source).toBe(before.initScripts[0].source)
+      // The persona's geo context must not drift away from the declared exit country.
+      expect(after.headers['accept-language']).toContain('ja-JP')
+
+      fs.rmSync(dir, { recursive: true, force: true })
+    })
   })
 
   describe('profile binding', () => {
@@ -346,9 +380,10 @@ describe('ego-lite account profile manager', () => {
         profileId: 'Default',
         proxy: null,
         updatedAt: '2026-11-13T00:00:00.000Z',
-      }, { profileId: 'Default' })
+      })
 
       expect(plan.readiness).toBe('missing-proxy')
+      expect(plan.profileId).toBe('Default')
       expect(plan.commands[0]!.method).toBe('Page.enable')
     })
   })

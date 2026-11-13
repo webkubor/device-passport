@@ -17,6 +17,8 @@ export interface CdpCommand {
 /** An init script installed on every new document of a target. */
 export interface CdpInitScript {
   source: string
+  /** `sessionId` is required for page-scoped targets when using flattened sessions. */
+  sessionId?: string
 }
 
 /** The ordered, declarative plan that applies a passport to a CDP target. */
