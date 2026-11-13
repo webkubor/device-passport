@@ -379,7 +379,7 @@ const fleetSnapshot = await manager.exportAll();
 
 ## ego-lite Account Profiles (`AccountProfileManager`)
 
-When the browser is [ego-lite](https://github.com/{{REPO_egolite_placeholder}}), one account maps to three things that must travel together: a sticky passport, an ego-lite **profile** binding (cookies and login state persist per profile), and a **proxy declaration**.
+When the browser is [ego-lite](https://github.com/citrolabs/ego-lite), one account maps to three things that must travel together: a sticky passport, an ego-lite **profile** binding (cookies and login state persist per profile), and a **proxy declaration**.
 
 ```typescript
 import { AccountProfileManager } from 'device-passport/ego';
